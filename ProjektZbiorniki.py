@@ -418,10 +418,9 @@ class Kolanko:
             start_luku = 0
 
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(QPen(Qt.gray,4))
+        painter.setPen(QPen(Qt.darkGray, 4))
         #skorzystam z drawArc ktory wykorzystuje instrukcje (x,y,szerokosc,wysokosc,start luku,dlugosc luku) kat jest podany w 1/16 stopnia wiec trzeba kat ktory chcemy domnozyc przez 1
         painter.drawArc(self.x_poczatkowe, self.y_poczatkowe, self.bok_kwadratu, self.bok_kwadratu, start_luku * 16,90 * 16)  # zaczynamy od prawego srodka i rysujemy jedna cwiartke
-        painter.setPen(QPen(Qt.green,4))
         bok_drugiego_kwadratu = self.bok_kwadratu - (2*self.szerokosc)
         painter.drawArc(self.x_poczatkowe+self.szerokosc,self.y_poczatkowe+self.szerokosc,bok_drugiego_kwadratu, bok_drugiego_kwadratu, start_luku * 16,90*16)
         #proba czegos innego bo w tamtym nie moge rysowac wody maskowaniem(ostatecznie maski nie rysujemy bo nie wyglada to dobrze poniewaz domyka kontur)
