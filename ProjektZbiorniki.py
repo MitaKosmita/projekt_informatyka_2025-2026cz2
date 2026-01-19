@@ -1,17 +1,15 @@
 import sys
 import random
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QGroupBox, QHBoxLayout, QLabel, QSlider
-from PyQt5.QtGui import QPainter, QPen, QPainterPath, QColor, qPremultiply
+from PyQt5.QtGui import QPainter, QPen, QPainterPath, QColor
 from PyQt5.QtCore import Qt, QPointF, QTimer,QRectF
-
-
+import pyqtgraph as pg
 class Zbiornik:
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.szerokosc = 150.0
         self.wysokosc = 150.0
-        self.poziom_zapelnienia = 0.0
         self.max_poziom = self.wysokosc
         self.napelnia_sie = False
         self.krok_napelniania =0.5
@@ -21,7 +19,7 @@ class Zbiornik:
         self.struga_jest = False
         self.maksymalna_objetosc =  1000.0
         self.objetosc_teraz =0.0
-        self.objetoscpx = (self.objetosc_teraz/self.maksymalna_objetosc)*self.wysokosc
+        self.struga2_jest = False
 
     def draw(self, painter):
         painter.setRenderHint(QPainter.Antialiasing)
@@ -33,7 +31,7 @@ class Zbiornik:
         PD = QPointF(self.x + self.szerokosc, self.y + self.wysokosc) #prawy dolny
         LD = QPointF(self.x, self.y + self.wysokosc) #lewy dolny
 
-        # PUNKTY WLEWU (górna część)
+        #punkty wlewu
         WLG = QPointF(self.x + 40, self.y - 40) #lewy gorny wlew
         WPG = QPointF(self.x + self.szerokosc - 40, self.y - 40) #prawy górny wlew
         WLD = QPointF(self.x + 60, self.y) #lewy dolny wlew
@@ -79,8 +77,20 @@ class Zbiornik:
             #wysokosc strugi to odleglosc od startu do wody
             aktualna_wysokosc_strugi = poziom_wody_y - struga_y
             #rysowanie strugi
-            rect_struga = QRectF(struga_x, struga_y, self.struga_szerokosc, aktualna_wysokosc_strugi)
-            painter.fillRect(rect_struga, QColor(0, 120, 255, 180))
+            woda = QRectF(struga_x, struga_y, self.struga_szerokosc, aktualna_wysokosc_strugi)
+            painter.fillRect(woda, QColor(0, 120, 255, 180))
+
+        if self.struga2_jest:
+            struga_x =  665
+            struga_y = 450
+            # gdzie jest poziom wody w pikselach
+            poziom_wody_zbiornika = self.y + self.wysokosc - (self.wysokosc * (self.objetosc_teraz / self.maksymalna_objetosc))
+            # wysokosc strugi to odleglosc od startu do wody
+            aktualna_wysokosc_strugi = poziom_wody_zbiornika- struga_y
+            szerokosc_strugi = 25
+            # rysowanie strugi
+            woda = QRectF(struga_x, struga_y, szerokosc_strugi, aktualna_wysokosc_strugi)
+            painter.fillRect(woda, QColor(0, 120, 255, 180))
 
     def dolej(self):
         if self.napelnia_sie: #tylko jeśli tryb napełniania jest włączony
@@ -95,18 +105,13 @@ class Zbiornik:
     def poziomPierwszegoZbiornika(self):#getter obencego poziomu cieczy
         return self.objetosc_teraz
 
-
 class Piec:
     def __init__(self,x,y):
         self.x = x
         self.y = y
-        self.poziom_wegla = 0
         self.wysokosc = 500
         self.szerokosc = 250
         self.max_poziom_wegla = 50
-        self.poziom_zapelnienia = 0
-        self.czy_sie_napelnia = False
-        self.otwiera_sie = False
         self.czy_jest_ogien = False
         self.licznik_czasu = 0
         self.doplyw_powietrza = 100
@@ -115,7 +120,6 @@ class Piec:
     def draw(self, painter):
         painter.setRenderHint(QPainter.Antialiasing)
         path = QPainterPath()
-        #punkty pieca (do rozbudowania o rury )!!!
         LG = QPointF(self.x, self.y)
         PG = QPointF(self.x+self.szerokosc, self.y)
         PD = QPointF(self.x+self.szerokosc, self.y+ self.wysokosc)
@@ -127,12 +131,22 @@ class Piec:
         ZPG = QPointF(self.x,self.y+10)#zasuwa powietrza góra
         ZPD = QPointF(self.x, self.y+60)#zasówa powietrza dół
 
+        WPG= QPointF(self.x+50, self.y)#wylot pary gora
+        WPG2 = QPointF(self.x+75, self.y)#wylot pary gora 2 czesc
+
+        WWD = QPointF(self.x+self.szerokosc, self.y+self.wysokosc -125)#wlot wody dol
+        WWD2 = QPointF(self.x+self.szerokosc, self.y+self.wysokosc-100)
+
         #budowanie ksztaltu pieca
         path.moveTo(RHG)
         path.lineTo(ZPD)
         path.moveTo(ZPG)
         path.lineTo(LG)
+        path.lineTo(WPG)
+        path.moveTo(WPG2)
         path.lineTo(PG)
+        path.lineTo(WWD)
+        path.moveTo(WWD2)
         path.lineTo(PD)
         path.lineTo(LD)
         path.lineTo(RHD)
@@ -169,18 +183,12 @@ class Piec:
 
             self.licznik_czasu -= 1
 
-
 class Hopper:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.poziom_wegla = 0
         self.wysokosc = 200
         self.szerokosc = 175
-        self.max_poziom_wegla = self.wysokosc
-        self.poziom_zapelnienia = 0
-        self.czy_sie_napelnia = False
-        self.czy_zamkniety = True
         self.otwiera_sie = False
         self.zamyka_sie = False
         self.dlugosc_klapy = 25.0
@@ -236,6 +244,7 @@ class Hopper:
     def animuj_wegiel(self):
         dol = self.y + self.wysokosc
         promien = 5
+        predkosc_w_prawo = 1.3
 
         for i, kulka in enumerate(self.lista_wegielkow): #enumerate zeby znac indeks i wartosci z tablicy wegielkow
             #na poczatku zakladamy ze kulka moze spadac
@@ -250,7 +259,7 @@ class Hopper:
                 # jesli inny wegiel jest tuz pod nami (w pionie i poziomie) to blokujemy spadanie tego na gorze
                 if abs(kulka[0] - inna[0]) < 10 and 0 < inna[1] - kulka[1] < 10:
                     moze_spadac = False
-                    # zsuwanie: przesun kulke lekko w bok zeby nie stala na czubku
+                    #zsuwanie: przesun kulke lekko w bok zeby nie stala na czubku
                     if kulka[0] < inna[0]:
                         kulka[0] -= 1
                     else:
@@ -284,31 +293,17 @@ class Hopper:
                 if kulka[0] > prawa_sciana - promien:
                     kulka[0] = prawa_sciana - promien
 
-            cx = 80 + 220  # x_poczatkowe+bok_kwadratu
-            cy = 530  # y_poczatkowe
-            r_max = 240  # promien zewnetrzny
-            r_min = 240 - 50  # promien wewnetrzny (szerokosc rury)
-            if kulka[0] < cx and kulka[1] > cy:
-                # obliczamy odleglosc od srodka kola uzywajac pitagorasa
-                # a^2 + b^2 = c^2, odleglosc = pierwiastek(dx^2 + dy^2)
-                dx = kulka[0] - cx
-                dy = kulka[1] - cy
-                odleglosc = (dx ** 2 + dy ** 2) ** 0.5  # pobieramy dystans od punktu (cx,cy)
+            if moze_spadac:
+                if kulka[1] < 650:
+                    kulka[1] += self.predkosc_spadania
 
-                # jesli kulka dotyka scianek luku
-                if odleglosc >= r_max:
-                    # odbicie od zewnetrznej scianki
-                    moze_spadac = False
-                    kulka[0] += kulka[3]  # popychamy w prawo
-                elif odleglosc <= r_min:
-                    # odbicie od wewnetrznej scianki
-                    moze_spadac = False
-                    kulka[0] -= kulka[3]  # popychamy w lewo
+                elif 650 <= kulka[1] < 700:
+                    kulka[1] += self.predkosc_spadania
+                    kulka[0] += predkosc_w_prawo
 
-                if 200 <= kulka[0] <= 500 and kulka[1] >= 790:#zeby nie przeszla przez dno
-                    moze_spadac = False
-                    kulka[3]=0 # ustawienie predkosci spadania kulki na 0
-                    kulka[1] = 795  #ustawienie na dnie pieca
+                else:
+                    kulka[1] += self.predkosc_spadania * 0.5
+                    kulka[0] += predkosc_w_prawo*2
 
 
     def dodaj_wegiel(self):
@@ -320,14 +315,15 @@ class Hopper:
         self.lista_wegielkow.append([start_x, self.y - 50, False,predkosc_spadania])#dodawanie wegielka do listy
 
 class Rura:
-    def __init__(self, x_poczatkowe, y_poczatkowe, x_koncowe, y_koncowe,czy_logiczna ='', szerokosc=25):
+    def __init__(self, x_poczatkowe, y_poczatkowe, x_koncowe, y_koncowe,czy_zaworowa ='',lewa_prawa = " ", szerokosc=25):
         self.x_poczatkowe= x_poczatkowe
         self.y_poczatkowe = y_poczatkowe
         self.x_koncowe = x_koncowe
         self.y_koncowe = y_koncowe
         self.szerokosc = szerokosc
-        self.czy_logiczna = ""
+        self.czy_zaworowa = czy_zaworowa
         self.poziom_wody = 0.0
+        self.lewa_prawa = lewa_prawa
     def draw(self,painter):
         painter.setRenderHint(QPainter.Antialiasing)
         path = QPainterPath()
@@ -361,11 +357,26 @@ class Rura:
 
             if self.poziom_wody > 0.01:
                 dlugosc_rury = abs(self.x_poczatkowe - self.x_koncowe)
-                wysokosc_wody = self.szerokosc * self.poziom_wody #obiczanei wysokosci wody(niespodziewane)
-                x_start = min(self.x_poczatkowe, self.x_koncowe)#lewy bok rury
-                y_start = (self.y_poczatkowe + self.szerokosc) - wysokosc_wody#dol rury
-                woda = QRectF(x_start, y_start, dlugosc_rury, wysokosc_wody)# peostokat ze stala podstawa ale zmienna wysokoscia
-                painter.fillRect(woda, QColor(0, 120, 255, 180))
+                x_min = min(self.x_poczatkowe, self.x_koncowe)
+                wysokosc_wody = self.szerokosc * self.poziom_wody
+                y_start_wody = (self.y_poczatkowe + self.szerokosc) - wysokosc_wody
+
+                if self.czy_zaworowa == 'TAK':
+                    zasieg_poziomy = dlugosc_rury * 0.5
+
+                    if self.lewa_prawa == 'PRAWA':
+                        #woda od prawej do srodka
+                        x_start_rysowania = x_min + (dlugosc_rury * 0.5)
+                    else:
+                        #woda od lewej do srodka
+                        x_start_rysowania = x_min
+
+                    woda = QRectF(x_start_rysowania, y_start_wody, zasieg_poziomy, wysokosc_wody)
+                    painter.fillRect(woda, QColor(0, 120, 255, 180))
+                else:
+                    #jak otworzymy zawor to jest na calej rurze woda
+                    woda = QRectF(x_min, y_start_wody, dlugosc_rury, wysokosc_wody)
+                    painter.fillRect(woda, QColor(0, 120, 255, 180))
 
             # rysowanie rury
             path.moveTo(LG)
@@ -376,9 +387,14 @@ class Rura:
             painter.setPen(QPen(Qt.darkGray, 4))
             painter.drawPath(path)
 
+    def ustaw_zawor(self, czy_blokuje):
+        if czy_blokuje:
+            self.czy_zaworowa = 'TAK'
+        else:
+            self.czy_zaworowa = 'NIE'
 
 class Kolanko:
-    def __init__(self, x_poczatkowe, y_poczatkowe,bok_kwadratu,kierunek = " ",czy_logiczny =" ", szerokosc=25):
+    def __init__(self, x_poczatkowe, y_poczatkowe,bok_kwadratu,kierunek = " ",czy_logiczny =" ",kolor=" ", szerokosc=25):
         self.x_poczatkowe = x_poczatkowe
         self.y_poczatkowe = y_poczatkowe
         self.bok_kwadratu = bok_kwadratu
@@ -386,6 +402,7 @@ class Kolanko:
         self.kierunek = kierunek
         self.czy_logiczny = czy_logiczny
         self.poziom_wody =0.0
+        self.kolor = kolor
 
     def draw(self, painter):
         #kolanko mozna pojawic w roznych konfiguracjach
@@ -417,6 +434,10 @@ class Kolanko:
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(path_maski)
 
+        if self.kolor == "NORMALNY":
+            kolor_wody =QColor(0, 120, 255, 180)
+        else:
+            kolor_wody = QColor(173, 216, 230, 180)
         if self.czy_logiczny == "TAK" and self.poziom_wody > 0.01:
             painter.save()
             painter.setClipPath(path_maski)
@@ -424,13 +445,11 @@ class Kolanko:
             wysokosc_wody = self.bok_kwadratu * self.poziom_wody
             y_dna = self.y_poczatkowe + self.bok_kwadratu
             woda = QRectF(self.x_poczatkowe, y_dna - wysokosc_wody, self.bok_kwadratu, wysokosc_wody)
-            painter.fillRect(woda, QColor(0, 120, 255, 180))
+            painter.fillRect(woda, kolor_wody)
             painter.restore()
-
 
 class Pompa:
     def __init__(self, x_poczatkowe, y_poczatkowe, bok_kwadratu):
-        self.dziala = False
         self.x_poczatkowe = x_poczatkowe
         self.y_poczatkowe = y_poczatkowe
         self.bok_kwadratu = bok_kwadratu
@@ -453,7 +472,6 @@ class Pompa:
         painter.drawLine(wierzcholek1, wierzcholek2)
         painter.drawLine(wierzcholek2, wierzcholek3)
         painter.drawLine(wierzcholek3,wierzcholek1)
-
 
 class PomieszczeniePradnicy:
     def __init__(self,x_poczatkowe, y_poczatkowe):
@@ -486,30 +504,231 @@ class PomieszczeniePradnicy:
         painter.setPen(QPen(Qt.darkGray, 4))
         painter.drawPath(path)
 
+class Pradnica:
+    def __init__(self,x_srodka, y_srodka):
+        self.x_srodka = x_srodka
+        self.y_srodka = y_srodka
+        self.obraca_sie = False
+        self.predkosc_obrotu =1.0
+        self.kat_obrotu =0.0
+        self.generowany_prad = 0.0
+
+    def draw(self,painter):
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.save()#zaspisanie ustawien rysowania
+        painter.translate(self.x_srodka, self.y_srodka)#ustawienie wspolrzednych na srodek wirnika
+        painter.rotate(self.kat_obrotu)#obrot pradnicy
+        painter.setPen(QPen(Qt.black, 4))
+        painter.drawLine(-25, 0, 25, 0)
+        painter.drawLine(0, -25, 0, 25)#dwie prostopadle linie
+        painter.restore()#zeby reszta rysunkow nie byla krzywo
+
+        painter.setPen(QPen(Qt.darkYellow))
+        font = painter.font()
+        font.setPointSize(12)
+        font.setBold(True)
+        painter.setFont(font)
+        tekst = f"{int(self.generowany_prad)} V"
+        painter.drawText(self.x_srodka -10, self.y_srodka - 40, tekst)
+
+    def aktualizuj_obrot(self):
+        self.kat_obrotu += self.predkosc_obrotu
+
+class Skraplanie_pary:
+    def __init__(self,x_poczatkowe,y_poczatkowe):
+        self.x_poczatkowe = x_poczatkowe
+        self.y_poczatkowe = y_poczatkowe
+        self.szerokosc = 200
+        self.wysokosc = 200
+        self.poziom_wody =0.0
+        self.czy_schladza = False
+        self.para_w_srodku=[]#czasteczki ktore wpadly do skraplacza
+        self.predkosc_opadania = 2.0
+
+    def draw(self,painter):
+        painter.setRenderHint(QPainter.Antialiasing)
+
+
+        path = QPainterPath()
+        LGW = QPointF(self.x_poczatkowe, self.y_poczatkowe + 50)
+        LG = QPointF(self.x_poczatkowe, self.y_poczatkowe)
+        PG = QPointF(self.x_poczatkowe + self.szerokosc, self.y_poczatkowe)
+        PD = QPointF(self.x_poczatkowe + self.szerokosc, self.y_poczatkowe + self.wysokosc)
+        LD = QPointF(self.x_poczatkowe, self.y_poczatkowe + self.wysokosc)
+        LDW = QPointF(self.x_poczatkowe, self.y_poczatkowe + 75)
+
+        PWC1 = QPointF(self.x_poczatkowe+50, self.y_poczatkowe)#kolejne otwory
+        PWC2 = QPointF(self.x_poczatkowe+75, self.y_poczatkowe)
+        PWC3 = QPointF(self.x_poczatkowe+125, self.y_poczatkowe)
+        PWC4 = QPointF(self.x_poczatkowe + 150, self.y_poczatkowe)
+
+        PGW = QPointF(self.x_poczatkowe+self.szerokosc, self.y_poczatkowe + self.wysokosc -25)
+
+        path.moveTo(LGW)
+        path.lineTo(LG)
+        path.lineTo(PWC1)
+        path.moveTo(PWC2)
+        path.lineTo(PWC3)
+        path.moveTo(PWC4)
+        path.lineTo(PG)
+        path.lineTo(PGW)
+        path.moveTo(PD)
+        path.lineTo(LD)
+        path.lineTo(LDW)
+        painter.setPen(QPen(Qt.darkGray, 4))
+        painter.drawPath(path)
+        painter.setPen(QPen(QColor(220, 220, 220), 3))#rysowanie pary z nowej listy
+        for p in self.para_w_srodku:
+            painter.drawPoint(int(p[0]), int(p[1]))
+
+        if self.poziom_wody > 1.0:
+            painter.setBrush(QColor(0, 120, 255, 180))
+            painter.setPen(Qt.NoPen)
+            x = int(self.x_poczatkowe + 2)
+            y = int(self.y_poczatkowe + self.wysokosc - self.poziom_wody)
+            w = int(self.szerokosc - 4)
+            h = int(self.poziom_wody)
+            painter.drawRect(x, y, w + 2, h)
+    def logika_skraplania(self):
+        import random
+        for p in list(self.para_w_srodku):
+            p[0] += random.uniform(-1, 1)
+            p[1] += random.uniform(-0.5, 0.5)
+            if self.czy_schladza:
+                if random.random() < 0.02:#2%szasny na spadniecie bo inaczej to spadalo ciurkiem i mi wylaczalao program caly czas
+                    p[1] += self.predkosc_opadania * 5#szybki spadek w dol
+            if self.poziom_wody>100.0:
+                self.poziom_wody = 100.0
+            granica_wody = self.y_poczatkowe + self.wysokosc - self.poziom_wody
+            if p[1] >= granica_wody or p[1] > self.y_poczatkowe + self.wysokosc:#woda rosnie tylko ponizej 100px
+                if self.poziom_wody < self.wysokosc:
+                    self.poziom_wody += 0.2
+                if p in self.para_w_srodku:
+                    self.para_w_srodku.remove(p)
+
+            if p[1] > self.y_poczatkowe + self.wysokosc:#czasteczka znika przy dotknieciu dna
+                if p in self.para_w_srodku:
+                    self.para_w_srodku.remove(p)
+
+class Zbiornik_Retencyjny():
+    def __init__(self, x_poczatkowe, y_poczatkowe):
+        self.x_poczatkowe = x_poczatkowe
+        self.y_poczatkowe = y_poczatkowe
+        self.szerokosc = 300
+        self.wysokosc = 200
+        self.poziom_wody = 0.0
+
+    def draw(self, painter):
+        painter.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        LG=QPointF(self.x_poczatkowe, self.y_poczatkowe)
+        PG =QPointF(self.x_poczatkowe+self.szerokosc,self.y_poczatkowe)
+        PD =QPointF(self.x_poczatkowe+self.szerokosc,self.y_poczatkowe+self.wysokosc)
+        LD = QPointF(self.x_poczatkowe, self.y_poczatkowe + self.wysokosc)
+        LDW = QPointF(self.x_poczatkowe,self.y_poczatkowe +25)
+        LDWW = QPointF(self.x_poczatkowe, self.y_poczatkowe + self.wysokosc-25)#lewy olny wylot wody
+        path.moveTo(LG)
+        path.lineTo(PG)
+        path.lineTo(PD)
+        path.lineTo(LD)
+        path.moveTo(LDWW)
+        path.lineTo(LDW)
+        painter.setBrush(Qt.NoBrush)
+        painter.setPen(QPen(Qt.darkGray, 4))
+        painter.drawPath(path)
+
+        # rysowanie cieczy z maskowaniem (z zajec) skopiowane ze zbiornika
+        if self.poziom_wody > 0:
+            painter.save()
+            painter.setClipPath(path)  # maskowanie do kształtu zbiornika
+            wysokosc_zapelnieniapx = self.wysokosc * (
+                        self.poziom_wody / self.wysokosc)  # przeliczenie na piksele
+            rect_liquid = QRectF(
+                self.x_poczatkowe,
+                self.y_poczatkowe + self.wysokosc - wysokosc_zapelnieniapx,
+                self.szerokosc,
+                wysokosc_zapelnieniapx
+            )
+            painter.fillRect(rect_liquid, QColor(0, 120, 255, 180))  # niebieska ciecz z przezroczystością
+            painter.restore()
+
+
+class Zawor:
+    def __init__(self, x_poczatkowe, y_poczatkowe):
+        self.x_poczatkowe = x_poczatkowe
+        self.y_poczatkowe = y_poczatkowe
+        self.wysokosc = 25
+        self.szerokosc = 50
+        self.czy_otwarty = False
+
+    def draw(self,painter):
+        painter.setRenderHint(QPainter.Antialiasing)
+        pol_wysokosci = self.wysokosc/2
+        pol_szerokosci = self.szerokosc/2
+
+        if self.czy_otwarty:
+            pen = QPen(Qt.green, 4)
+        else:
+            pen = QPen(Qt.red, 4)
+        path = QPainterPath()
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        #trojkat po lewo
+        path.moveTo(self.x_poczatkowe - pol_szerokosci, self.y_poczatkowe - pol_wysokosci)
+        path.lineTo(self.x_poczatkowe- pol_szerokosci, self.y_poczatkowe + pol_wysokosci)
+        path.lineTo(self.x_poczatkowe, self.y_poczatkowe)
+        path.closeSubpath()
+        #prawy trojkat
+        path.moveTo(self.x_poczatkowe + pol_szerokosci, self.y_poczatkowe - pol_wysokosci)
+        path.lineTo(self.x_poczatkowe +pol_szerokosci, self.y_poczatkowe +pol_wysokosci)
+        path.lineTo(self.x_poczatkowe, self.y_poczatkowe)
+        path.closeSubpath()
+
+        painter.drawPath(path)
+
 class OknoZRysunkami(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet("background-color: white;")
+        self.moc_plynna = 0.0  #przechowuje wygladzona wartosc powietrza
+        self.akumulator_pary = 0.0  #przechowuje ulamek wygenerwoanej pary
+        self.napiecie_wygladzone = 0.0
         self.suma_wody =0.0
+        self.licznik_opoznienia = 0
+        self.licznik_czasu_pary = 0
         self.czasteczki_pary= []#x,y
+        self.regulator_aktywny = False
+        self.licznik_klatek_auto = 0
+        self.pierwszy_wegiel_wpadl = False
+        self.pompa_wystartowala = False
         self.setWindowTitle("Zbiorniki projekt")
         self.zbiornik = Zbiornik(600, 550) #wymiary wysokosc:150 szerokosc: 150
         self.piec = Piec(200,300) #wymiary wysokosc: 500 szerokosc: 250
         self.hopper = Hopper(5,400) #wymiary wyokosc:200 szerokosc: 200
         self.rura_pionowa = Rura(80, 600, 80, 630, "NIE")
-        self.rura = Rura(600, 675, 450, 675, "TAK")
-        self.kolanko1 = Kolanko(400, 600, 100, kierunek="LD",czy_logiczny= "TAK")
-        self.kolanko2 = Kolanko(80, 510,240, kierunek="LD", czy_logiczny="NIE")
-        self.kolanko3 = Kolanko(325, 325, 100, kierunek="PG",czy_logiczny= "TAK")
-        self.kolanko4 = Kolanko(325, 325, 100, kierunek="LG",czy_logiczny= "TAK")
-        self.kolanko5 = Kolanko(250, 325, 100, kierunek="PD",czy_logiczny= "TAK")
-        self.kolanko6 = Kolanko(250, 325, 100, kierunek="LD",czy_logiczny= "TAK")
-        self.rura1 = Rura(400,650,400,375, "TAK")
-        self.rura2 = Rura(250,375,250,150,"TAK")
-        self.kolanko7 = Kolanko(250,100,100, kierunek="LG")
+        self.rura = Rura(600, 675, 450, 675, "NIE")
+        self.kolanko1 = Kolanko(400, 600, 100, kierunek="LD",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.kolanko2 = Kolanko(80, 510,240, kierunek="LD", czy_logiczny="NIE",kolor="NORMALNY")
+        self.kolanko3 = Kolanko(325, 325, 100, kierunek="PG",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.kolanko4 = Kolanko(325, 325, 100, kierunek="LG",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.kolanko5 = Kolanko(250, 325, 100, kierunek="PD",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.kolanko6 = Kolanko(250, 325, 100, kierunek="LD",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.rura1 = Rura(400,650,400,375, "NIE")
+        self.rura2 = Rura(250,375,250,150,"NIE")
+        self.kolanko7 = Kolanko(250,100,100, kierunek="LG",kolor="NORMALNY")
         self.pomieszczenie_pradnicy = PomieszczeniePradnicy(300,75)
         self.pompa = Pompa(500,657,60)
-
+        self.pradnica = Pradnica(337, 112)
+        self.rura3 = Rura(375,100,500,100,"NIE")
+        self.Skraplanie_pary = Skraplanie_pary(500,50)#szerokosc:200 wysokosc:200
+        self.kolanko8 = Kolanko(550,0,100,kierunek="LD",czy_logiczny= "TAK",kolor="dadsa")
+        self.kolanko9 = Kolanko(550, 0, 100, kierunek="PD",czy_logiczny= "TAK",kolor="dsadas")
+        self.rura4 = Rura(700,225,900,225,"TAK","LEWA")
+        self.zbiornik_retencyjny = Zbiornik_Retencyjny(900,225)#szerooksc:200 wysokosc:275
+        self.zawor1 = Zawor(800,235)
+        self.rura5 = Rura(900,400,715,400,"TAK", "PRAWA")
+        self.kolanko10 = Kolanko(665,400, 100,kierunek="LG",czy_logiczny= "TAK",kolor="NORMALNY")
+        self.zawor2 = Zawor(807,410)
         self.resize(1280, 920)
         #timer zeby sie zmienialp
         self.timer = QTimer()
@@ -533,111 +752,261 @@ class OknoZRysunkami(QWidget):
         self.rura2.draw(painter)
         self.kolanko7.draw(painter)
         self.pomieszczenie_pradnicy.draw(painter)
+        self.pradnica.draw(painter)
         self.pompa.draw(painter)
-        painter.drawLine(10,100, 1000,100)
-        painter.drawLine(10, 150, 1000, 150)
+        self.Skraplanie_pary.draw(painter)
+        self.rura3.draw(painter)
+        self.kolanko8.draw(painter)
+        self.kolanko9.draw(painter)
+        self.rura4.draw(painter)
+        self.zbiornik_retencyjny.draw(painter)
+        self.zawor1.draw(painter)
+        self.rura5.draw(painter)
+        self.kolanko10.draw(painter)
+        self.zawor2.draw(painter)
         for p in self.czasteczki_pary:
-            painter.setBrush(QColor(220, 220, 220))#jasnoszary
-            rozmiar = 3
-            painter.drawEllipse(int(p[0]), int(p[1]), rozmiar, rozmiar)
+            painter.setPen(QPen(QColor(220, 220, 220), 3))
+            painter.drawPoint(int(p[0]), int(p[1]))
 
-    def aktualizuj_wode(self):#zmienic nazwe funckji na bardziej adekwatna pod koniec
+    def aktualizuj_wode(self):
+        self.zarzadzaj_trybem_auto()
+        self.logika_obiegu_wtornego()
         self.zbiornik.dolej()
-        self.hopper.animuj_klape()
-        woda_na_rury =0
+
+        roznica = self.piec.doplyw_powietrza - self.moc_plynna
+        self.moc_plynna += roznica * 0.02
+        woda = self.suma_wody
+
         if self.zbiornik.napelnia_sie:
-            self.suma_wody += self.zbiornik.krok_napelniania
-            if self.suma_wody > 3000:
-                self.suma_wody = 3000#maksymalna  pojemnosc calego systemu rur
+            if self.suma_wody < 1000:
+                self.suma_wody += self.zbiornik.krok_napelniania
+                self.zbiornik.struga_jest = True
+            else:
+                self.suma_wody = 1000#jesli pelny
+                self.zbiornik.napelnia_sie = False
+                self.zbiornik.struga_jest = False
+        else:
+            self.zbiornik.struga_jest = False
+
+        #zmiana wody w pare
+        krok_obiegu = 0.15
+        if self.pompa.czy_wlaczona and woda > 0:
+            #jesli piec sie grzeje to woda znika
+            if self.piec.licznik_czasu > 0:
+                self.suma_wody = max(0, self.suma_wody - krok_obiegu)
+
+            #napelnianie rur
+            if woda > 10:
+                if self.rura1.poziom_wody < 1.0:
+                    self.rura1.poziom_wody += 0.01
+                elif self.kolanko3.poziom_wody < 1.0:
+                    self.kolanko3.poziom_wody += 0.01
+                elif self.kolanko4.poziom_wody < 1.0:
+                    self.kolanko4.poziom_wody += 0.01
+                elif self.kolanko5.poziom_wody < 1.0:
+                    self.kolanko5.poziom_wody += 0.01
+                elif self.kolanko6.poziom_wody < 1.0:
+                    self.kolanko6.poziom_wody += 0.01
+        else:
+            #jak wylaczymy pompe to woda splywa
+            self.rura1.poziom_wody = max(0, self.rura1.poziom_wody - 0.02)
+            self.kolanko3.poziom_wody = max(0, self.kolanko3.poziom_wody - 0.02)
+            self.kolanko4.poziom_wody = max(0, self.kolanko4.poziom_wody - 0.02)
+            self.kolanko5.poziom_wody = max(0, self.kolanko5.poziom_wody - 0.02)
+            self.kolanko6.poziom_wody = max(0, self.kolanko6.poziom_wody - 0.02)
+
+        if self.suma_wody > 1000:
+            self.suma_wody = 1000
 
         woda = self.suma_wody
-        krok_pompowania = 0.5
-        #najpierw zbiornik rura i kolanko napelniaja sie rownoczzesnie
-        if woda <= 25:
-            procent_wspolny = woda / 25.0
-            self.rura.poziom_wody = procent_wspolny
-            self.kolanko1.poziom_wody = woda/self.kolanko1.bok_kwadratu
-            self.zbiornik.objetosc_teraz = (woda / 150.0) * self.zbiornik.maksymalna_objetosc
-            woda_na_rury = 0
 
-            #jesli rura i kolanko sie zapelnily to tylko zbiornik sie napelnia
-        elif woda <= 150:
-            self.rura.poziom_wody = 1.0
-            self.kolanko1.poziom_wody = woda / self.kolanko1.bok_kwadratu
-            self.zbiornik.objetosc_teraz = (woda / 150.0) * self.zbiornik.maksymalna_objetosc
-            woda_na_rury = woda - 50.0
+        #wizualizacja poziomow wody
+        self.rura.poziom_wody = min(1.0, woda / 25.0)
+        self.kolanko1.poziom_wody = min(1.0, woda / 50.0)
+        self.zbiornik.objetosc_teraz = min(self.zbiornik.maksymalna_objetosc, woda)
 
-        if self.pompa.czy_wlaczona and self.zbiornik.objetosc_teraz > 0:
-            self.zbiornik.objetosc_teraz = max(0, self.zbiornik.objetosc_teraz - krok_pompowania)
-
-        if self.pompa.czy_wlaczona and woda > 100:
-            if self.rura1.poziom_wody < 1.0:#napelniaj rure 1 dokad nie bedzie pelna
-                self.rura1.poziom_wody += 0.01
-            elif self.kolanko3.poziom_wody < 1.0:#tak samo z kolankiem 3
-                self.kolanko3.poziom_wody += 0.01
-            elif self.kolanko4.poziom_wody < 1.0:#tak samo z kolankiem 3
-                self.kolanko4.poziom_wody += 0.01
-            elif self.kolanko5.poziom_wody < 1.0:#tak samo z kolankiem 3
-                self.kolanko5.poziom_wody += 0.01
-            elif self.kolanko6.poziom_wody < 1.0:
-                self.kolanko6.poziom_wody += 0.01
-
+        self.hopper.animuj_klape()
+        if self.Skraplanie_pary.czy_schladza:
+            if self.kolanko8.poziom_wody < 1.0: self.kolanko8.poziom_wody += 0.02
+            if self.kolanko9.poziom_wody < 1.0: self.kolanko9.poziom_wody += 0.02
         else:
-            #jesli pompa nie dziala woda splywa
-            self.rura1.poziom_wody = max(0, self.rura1.poziom_wody - 0.02)
-            self.rura2.poziom_wody = max(0, self.rura2.poziom_wody - 0.02)
-            self.kolanko3.poziom_wody = max(0,self.kolanko3.poziom_wody - 0.02)
-            self.kolanko4.poziom_wody = max(0,self.kolanko4.poziom_wody - 0.02)
-            if not self.zbiornik.napelnia_sie:
-                self.zbiornik.struga_jest = False
+            self.kolanko8.poziom_wody = max(0, self.kolanko8.poziom_wody - 0.02)
+            self.kolanko9.poziom_wody = max(0, self.kolanko9.poziom_wody - 0.02)
 
         for kulka in self.hopper.lista_wegielkow:
-            #jesli kulka jest w poblizu dna pieca
             if 200 <= kulka[0] <= 400 and kulka[1] >= 790:
-                self.piec.licznik_czasu +=1200# zmienic na wiecej potem
+                self.piec.licznik_czasu += 7000#zmienic na mniej
                 break
+
         self.zarzadzanie_para()
+        self.obrot_wirnika()
+        self.pradnica.aktualizuj_obrot()
         self.hopper.animuj_wegiel()
         self.update()
 
     def zarzadzanie_para(self):
         import random
-        czy_sie_pali = self.piec.licznik_czasu > 0
-        if czy_sie_pali and self.kolanko6.poziom_wody > 0.1:
-            if len(self.czasteczki_pary) < 1000:#limit czasteczek
-                for i in range(1):
-                    #x, y
-                    self.czasteczki_pary.append([262 + random.randint(-8, 8), 375, 255])
+        if self.piec.licznik_czasu > 0 and self.kolanko6.poziom_wody > 0.1:#sprawdzamy czy piec grzeje i jest woda
+            if self.licznik_opoznienia < 300: #opoznienie kolo 3 skund
+                self.licznik_opoznienia += 1
+        else:
+            if self.licznik_opoznienia > 0:#piec zgasl
+                self.licznik_opoznienia -= 1
+
+        if self.licznik_opoznienia >= 300:
+            self.akumulator_pary += self.moc_plynna
+
+            # Wyciągamy cząsteczki z akumulatora (pętla while obsłuży nawet dużą produkcję)
+            while self.akumulator_pary >= 100.0:
+                if len(self.czasteczki_pary) < 750:
+                    self.czasteczki_pary.append([262 + random.randint(-8, 8), 375])
+                    self.suma_wody = max(0, self.suma_wody - 0.2)
+                self.akumulator_pary -= 100.0
 #self.rura2 = Rura(250,375,250,150,"TAK")
 
-        for p in self.czasteczki_pary:
-            if p[1]>150:
-                p[1]-=1.0
+        for p in list(self.czasteczki_pary):
+            if p[0] > 600:
+                self.Skraplanie_pary.para_w_srodku.append(p)
+                if p in self.czasteczki_pary:
+                    self.czasteczki_pary.remove(p)
+                continue
+
+            if p[1] > 150:
+                p[1] -= 1.0
                 drganie = p[0]+random.uniform(-0.5, 0.5)
                 if 250<p[0]+drganie<275:
                     p[0]+=drganie
-            elif 110 < p[1] <= 150:#ruch w kolanku
-                p[1] -= 1.0#troche w gore
-                p[0] += 0.6#troche w prawo
+            elif 110 < p[1] <= 150:
+                p[1] -= 1.0
+                p[0] += 0.6
             else:
-                p[0] += 1.0#leci w prawo
-                dy = random.uniform(-0.5, 10)
-                if 105 < p[1] + dy < 125:
-                    p[1] += dy#drgania w pionie zeby nie lecialo nudnie ciurkiem
+                p[0] += 1.0
+                dy = random.uniform(-2, 10)
+                if 90 < p[1] + dy < 125:
+                    p[1] += dy
+        self.Skraplanie_pary.logika_skraplania()
 
-            #usuwanie czasteczek gdy wyleca za ekran
-            if p[0] > 1300:
-                self.czasteczki_pary.remove(p)
+    def logika_obiegu_wtornego(self):
+        predkosc_transferu =0.25
+        czy_jest_miejsce = self.suma_wody < 3000#sprawdzamy czy zbiornik pierwszy jest pelny
+        #stosunek poziomu wody do jej wysokosci
+        nowy_poziom = self.Skraplanie_pary.poziom_wody / 25.0
+        #gdy w skaplaczu ubywa wody to w rurze tez
+        self.rura4.poziom_wody = nowy_poziom
+        if self.rura4.poziom_wody > 1.0:
+            self.rura4.poziom_wody = 1.0
+        elif self.rura4.poziom_wody < 0.0:
+            self.rura4.poziom_wody = 0.0
 
+        #przelewanie zaworu???? to jak dziala zawor po prostu
+        if self.zawor1.czy_otwarty:
+            self.rura4.ustaw_zawor(False)
+            ile_miejsca_zostalo_kurde_faja = self.zbiornik_retencyjny.poziom_wody < self.zbiornik_retencyjny.wysokosc
+            if self.Skraplanie_pary.poziom_wody > 0 and ile_miejsca_zostalo_kurde_faja:
+                self.Skraplanie_pary.poziom_wody -= predkosc_transferu#zabieramy wode ze skraplaca
+                self.zbiornik_retencyjny.poziom_wody += predkosc_transferu#dodajemy ja do zbiornika retencyjnego
+        else:
+            self.rura4.ustaw_zawor(True)
 
+        #tak samo dla rury 5 i zbiornika retencyjnego
+        poziom_rury5 = self.zbiornik_retencyjny.poziom_wody / 25.0
+        self.rura5.poziom_wody = poziom_rury5
+
+        if self.rura5.poziom_wody > 1.0:
+            self.rura5.poziom_wody = 1.0
+        elif self.rura5.poziom_wody < 0.0:
+            self.rura5.poziom_wody = 0.0
+
+        #przelewanie przez zawor2
+        if self.zawor2.czy_otwarty:
+            self.rura5.ustaw_zawor(False)
+            if self.zbiornik_retencyjny.poziom_wody >= 1.0:
+                self.zbiornik_retencyjny.poziom_wody -= predkosc_transferu
+                if self.kolanko10.poziom_wody < 1.0:
+                    self.kolanko10.poziom_wody += 0.5
+                self.zbiornik.struga2_jest = True
+                self.suma_wody += 0.7
+            elif self.kolanko10.poziom_wody > 0:#jesli woda ucieka ze zbiornika i rur to z kolanka tez
+                self.kolanko10.poziom_wody -= 0.02
+                self.zbiornik.struga2_jest = True
+                self.suma_wody += 0.7
+            else:
+                self.zbiornik.struga2_jest = False
+        else:
+            if not czy_jest_miejsce:
+                self.zawor2.czy_otwarty = False#automatyczne zamkniecie zaworu gdy zbiornik 1 jest pelny
+            self.rura5.ustaw_zawor(True)#zawor zamkniety
+            if self.kolanko10.poziom_wody >0:#wylewanie wody z kolanka
+                self.kolanko10.poziom_wody -= 0.01
+                self.zbiornik.struga2_jest = True
+                self.suma_wody += 0.7
+            else:
+                self.zbiornik.struga2_jest = False
+
+    def obrot_wirnika(self):
+        ile_pary = sum(1 for p in self.czasteczki_pary if 310 < p[0] < 380)#ilosc pary w wirniku
+        cel = (ile_pary / 50.0) * 20.0   #obliczenie docelowej predkosci
+        self.pradnica.predkosc_obrotu += (cel - self.pradnica.predkosc_obrotu) * 0.01 #wygladzanie ruchu wirnika
+        v_surowe = self.pradnica.predkosc_obrotu * 6.5#wygladzanie napiecia
+        self.napiecie_wygladzone += (v_surowe - self.napiecie_wygladzone) * 0.05#wyslanie czystego wyniku do pradnicy
+        self.pradnica.generowany_prad = self.napiecie_wygladzone
+
+    def zarzadzaj_trybem_auto(self):
+        if self.regulator_aktywny:
+            if self.suma_wody >= 1000:
+                self.pompa_wystartowala = True #pierwszy start pompy dopiero przy pelnym zbiorniku
+
+            if self.pompa_wystartowala:#jesli byl juz pierwszy start to pompa i osprzet dzialaja non stop
+                self.pompa.czy_wlaczona = True
+                self.Skraplanie_pary.czy_schladza = True
+                self.zawor1.czy_otwarty = True
+                self.hopper.otwiera_sie = False
+                self.hopper.zamyka_sie = True
+
+                if not self.pierwszy_wegiel_wpadl:
+                    self.hopper.dodaj_wegiel()
+                    self.pierwszy_wegiel_wpadl = True
+                    self.licznik_klatek_auto = 0
+                else:
+                    self.licznik_klatek_auto += 1
+                    if self.licznik_klatek_auto >= 500:
+                        self.hopper.dodaj_wegiel()
+                        self.licznik_klatek_auto = 0
+
+            if self.suma_wody < 300:# logika uzupelniania wody
+                if self.zbiornik_retencyjny.poziom_wody > 0:  #najpierw bierzemy ze zbiornika retencyjnego
+                    self.zawor2.czy_otwarty = True
+                    self.zbiornik.napelnia_sie = False
+                    self.zbiornik.struga_jest = False
+                else: #gdy retencyjny pusty to dolewamy z zewnatrz
+                    self.zawor2.czy_otwarty = False
+                    self.zbiornik.napelnia_sie = True
+                    self.zbiornik.struga_jest = True
+
+            if self.suma_wody >= 1000: #wylaczenie lania gdy pelny
+                self.zbiornik.napelnia_sie = False
+                self.zbiornik.struga_jest = False
+                self.zawor2.czy_otwarty = False
+
+        else:
+            self.pierwszy_wegiel_wpadl = False
+            self.pompa_wystartowala = False
 #sterowanie
 class OknoSterowania(QWidget):
     def __init__(self, zbiornik, okno_wiz):
         super().__init__()
+        #zmienne stanu
+        self.v_zadane = 230.0
+        self.licznik_czekania = 0
+        self.poprzedni_blad = 0.0
+        self.regulator_aktywny = False
+        self.licznik_klatek_wykresu = 0
+        self.licznik_klatek_auto = 0
         self.zbiornik = zbiornik
         self.okno_wiz = okno_wiz
         self.setWindowTitle("Sterowanie")
-        self.resize(300, 400)
+        self.resize(600, 800)
+
 
         budowa_sterowania = QVBoxLayout()#glowny kolumnowy uklad(zobaczymy ile tego bedzie pozniej)
 
@@ -654,21 +1023,16 @@ class OknoSterowania(QWidget):
         przyciski_layout.addWidget(self.btn_start)
         przyciski_layout.addWidget(self.btn_stop)
         przyciski_layout.addWidget(self.btn_reset)
-
         #w ilu % zapełniony jest zbiornik
         self.label_procent = QLabel(f"Poziom 0%")
         self.label_procent.setStyleSheet("color: black; font-weight: bold;")
         przyciski_layout.addWidget(self.label_procent)
-
         #dodanie rzędu do kolumny layoutu
         self.przyciski_box.setLayout(przyciski_layout)
-
         #dodanie podokna do layoutu
         budowa_sterowania.addWidget(self.przyciski_box)
-
         #główny layout
         self.setLayout(budowa_sterowania)
-
         #kliczki linkujemy
         self.btn_start.clicked.connect(self.start)
         self.btn_stop.clicked.connect(self.stop)
@@ -698,20 +1062,16 @@ class OknoSterowania(QWidget):
         #sterowanie piecem
         self.piec_box = QGroupBox("Piec")
         piec_layout = QVBoxLayout()
-
         self.label_powietrze = QLabel("Dopływ powietrza: 100%")
         piec_layout.addWidget(self.label_powietrze)
         self.suwak_powietrza = QSlider(Qt.Horizontal)
         self.suwak_powietrza.setRange(0, 100)
         self.suwak_powietrza.setValue(100)
         self.suwak_powietrza.valueChanged.connect(self.zmien_doplyw)
-
         piec_layout.addWidget(self.suwak_powietrza)
         self.piec_box.setLayout(piec_layout)
-
         #Dodanie do głównego układu
         budowa_sterowania.addWidget(self.piec_box)
-
         # sterowanie pompa
         self.pompa_box = QGroupBox("Sterowanie pompa")
         pompa_layout = QHBoxLayout()  # poziomo przyciski
@@ -729,6 +1089,109 @@ class OknoSterowania(QWidget):
         #laczenie przyciskow
         self.btn_on.clicked.connect(self.wlacz_pompe)
         self.btn_off.clicked.connect(self.wylacz_pompe)
+
+        # sterowanie chlodzeniem
+        self.chlodzenie_box = QGroupBox("Sterowanie chlodzeniem")
+        chlodzenie_layout = QHBoxLayout()  # poziomo przyciski
+        self.btn_ch_on = QPushButton("WŁĄCZ CHŁODZENIE")
+        self.btn_ch_on.setStyleSheet("background-color: green;")
+        self.btn_ch_off= QPushButton("WYŁĄCZ CHŁODZENIE")
+        self.btn_ch_off.setStyleSheet("background-color: red;")
+
+        chlodzenie_layout.addWidget(self.btn_ch_on)
+        chlodzenie_layout.addWidget(self.btn_ch_off)
+
+        self.chlodzenie_box.setLayout(chlodzenie_layout)
+        # Dodanie do głównego układu
+        budowa_sterowania.addWidget(self.chlodzenie_box)
+        #laczenie przyciskow
+        self.btn_ch_on.clicked.connect(self.wlacz_chlodzenie)
+        self.btn_ch_off.clicked.connect(self.wylacz_chlodzenie)
+        # sterowanie zaworem1
+        self.zawor_box = QGroupBox("Sterowanie zaworem 1")
+        zawor_layout = QHBoxLayout()  # poziomo przyciski
+        self.btn_za_on = QPushButton("OTWORZ ZAWOR")
+        self.btn_za_on.setStyleSheet("background-color: green;")
+        self.btn_za_off= QPushButton("ZAMKNIJ ZAWOR")
+        self.btn_za_off.setStyleSheet("background-color: red;")
+
+        zawor_layout.addWidget(self.btn_za_on)
+        zawor_layout.addWidget(self.btn_za_off)
+
+        self.zawor_box.setLayout(zawor_layout)
+        # Dodanie do głównego układu
+        budowa_sterowania.addWidget(self.zawor_box)
+        #laczenie przyciskow
+        self.btn_za_on.clicked.connect(self.otworz_zawor_1)
+        self.btn_za_off.clicked.connect(self.zamknij_zawor_1)
+
+        # sterowanie zaworem2
+        self.zawor2_box = QGroupBox("Sterowanie zaworem 2")
+        zawor2_layout = QHBoxLayout()  # poziomo przyciski
+        self.btn_za2_on = QPushButton("OTWORZ ZAWOR")
+        self.btn_za2_on.setStyleSheet("background-color: green;")
+        self.btn_za2_off = QPushButton("ZAMKNIJ ZAWOR")
+        self.btn_za2_off.setStyleSheet("background-color: red;")
+
+        zawor2_layout.addWidget(self.btn_za2_on)
+        zawor2_layout.addWidget(self.btn_za2_off)
+
+        self.zawor2_box.setLayout(zawor2_layout)
+        # Dodanie do głównego układu
+        budowa_sterowania.addWidget(self.zawor2_box)
+        # laczenie przyciskow
+        self.btn_za2_on.clicked.connect(self.otworz_zawor_2)
+        self.btn_za2_off.clicked.connect(self.zamknij_zawor_2)
+        #PID
+        self.regulator_box = QGroupBox("Automatyczny Regulator Napięcia")
+        regulator_layout = QVBoxLayout()
+
+        self.label_v_zadane = QLabel("Napięcie zadane: 230 V")
+        self.label_v_zadane.setStyleSheet("font-weight: bold; color: red;")
+        regulator_layout.addWidget(self.label_v_zadane)
+
+        self.suwak_v_zadane = QSlider(Qt.Horizontal)
+        self.suwak_v_zadane.setRange(0, 250)
+        self.suwak_v_zadane.setValue(230)
+        self.suwak_v_zadane.valueChanged.connect(self.aktualizuj_etykiete_v)
+        regulator_layout.addWidget(self.suwak_v_zadane)
+
+        przyciski_reg_layout = QHBoxLayout()
+        self.btn_reg_on = QPushButton("AUTO ON")
+        self.btn_reg_on.setStyleSheet("background-color: green; color: white;")
+        self.btn_reg_off = QPushButton("AUTO OFF")
+        self.btn_reg_off.setStyleSheet("background-color: red; color: white;")
+
+        przyciski_reg_layout.addWidget(self.btn_reg_on)
+        przyciski_reg_layout.addWidget(self.btn_reg_off)
+        regulator_layout.addLayout(przyciski_reg_layout)
+
+        self.regulator_box.setLayout(regulator_layout)
+        budowa_sterowania.addWidget(self.regulator_box)
+        #laczenie kliczkow
+        self.btn_reg_on.clicked.connect(self.wlacz_regulator)
+        self.btn_reg_off.clicked.connect(self.wylacz_regulator)
+
+        #wykres przerobiony kod z zajec
+        self.historia_len = 100
+        self.x_h = list(range(self.historia_len))
+        self.y_zadane_h = [self.v_zadane] * self.historia_len
+        self.y_gora_h = [self.v_zadane + 5] * self.historia_len
+        self.y_dol_h = [self.v_zadane - 5] * self.historia_len
+        self.y_v_aktualne_h = [0.0] * self.historia_len
+
+        self.graph = pg.PlotWidget()
+        self.graph.setBackground('w')
+        self.graph.showGrid(x=False, y=False)
+        self.graph.setYRange(0, 260)
+        self.graph.setMinimumHeight(200)  # Rezerwuje miejsce na dole
+
+        self.line_zadana = self.graph.plot(self.x_h, self.y_zadane_h, pen=pg.mkPen('b', width=2))
+        self.line_gora = self.graph.plot(self.x_h, self.y_gora_h, pen=pg.mkPen('r', style=Qt.DashLine))
+        self.line_dol = self.graph.plot(self.x_h, self.y_dol_h, pen=pg.mkPen('r', style=Qt.DashLine))
+        self.line_aktualne = self.graph.plot(self.x_h, self.y_v_aktualne_h, pen=pg.mkPen('orange', width=2))
+        budowa_sterowania.addWidget(self.graph)
+
 
     #logika przyciskow
     def start(self):
@@ -753,8 +1216,24 @@ class OknoSterowania(QWidget):
 
     #update % napelnienia
     def update_status(self):
+        self.oblicz_regulator()
+        self.licznik_klatek_wykresu +=1
+        if self.licznik_klatek_wykresu >= 60:
+            self.aktualizuj_wykres()
+            self.licznik_klatek_wykresu = 0
+
         procent = (self.zbiornik.poziomPierwszegoZbiornika() / self.zbiornik.maksymalna_objetosc * 100)
         self.label_procent.setText(f"Poziom: {procent:.1f} %")
+        if procent == 100:
+            self.btn_za2_on.setEnabled(False)
+            self.btn_za2_on.setText("ZABLOKOWANE (PEŁNY)")
+            self.btn_za2_on.setStyleSheet("background-color: #555555; color: white;")
+
+            self.okno_wiz.zawor2.czy_otwarty = False#jesli zawor byl otwarty tedy gdy mozna przelac zbiornik to go wylacz
+        else:
+            self.btn_za2_on.setEnabled(True)
+            self.btn_za2_on.setText("OTWÓRZ ZAWÓR")
+            self.btn_za2_on.setStyleSheet("background-color: green;")
         self.update()
 
     #logika przyciskow hoppera
@@ -780,6 +1259,92 @@ class OknoSterowania(QWidget):
 
     def wylacz_pompe(self):
         self.okno_wiz.pompa.czy_wlaczona = False
+
+    def wlacz_chlodzenie(self):
+        self.okno_wiz.Skraplanie_pary.czy_schladza = True
+
+    def wylacz_chlodzenie(self):
+        self.okno_wiz.Skraplanie_pary.czy_schladza = False
+    #sterowanie zaworami
+    def otworz_zawor_1(self):
+        self.okno_wiz.zawor1.czy_otwarty = True
+
+    def zamknij_zawor_1(self):
+        self.okno_wiz.zawor1.czy_otwarty = False
+
+    def otworz_zawor_2(self):
+        self.okno_wiz.zawor2.czy_otwarty = True
+
+    def zamknij_zawor_2(self):
+            self.okno_wiz.zawor2.czy_otwarty = False
+
+    def wlacz_regulator(self):
+        self.regulator_aktywny = True
+        self.okno_wiz.regulator_aktywny = True
+        self.label_v_zadane.setStyleSheet("font-weight: bold; color: green;")
+
+    def wylacz_regulator(self):
+        self.regulator_aktywny = False
+        self.okno_wiz.regulator_aktywny = False
+        self.label_v_zadane.setStyleSheet("font-weight: bold; color: red;")
+
+    def oblicz_regulator(self):
+        if not self.regulator_aktywny:
+            return
+
+        self.licznik_czekania += 1  #zwiekszamy licznik klatek
+        if self.licznik_czekania < 125:  #sprawdzamy czy minelo wystarczajaco duzo czasu
+            return
+        self.licznik_czekania = 0  #zerujemy licznik przed nastepnym cyklem
+
+        v_teraz = self.okno_wiz.pradnica.generowany_prad  #pobieramy aktualne napiecie
+        powietrze_teraz = self.okno_wiz.piec.doplyw_powietrza  #pobieramy obecny stan suwaka
+        roznica = self.v_zadane - v_teraz  #obliczamy roznice od celu
+
+        if abs(roznica) <= 5:  #jesli blad jest maly
+            return  #nic nie robimy
+
+        if roznica > 50:  #jesli brakuje bardzo duzo napiecia
+            nowe_powietrze = powietrze_teraz + 10  #robimy wielki skok o 10 procent
+        elif roznica > 0:  #jesli brakuje tylko troche
+            nowe_powietrze = powietrze_teraz + 1  #robimy maly krok o 1 procent
+        elif roznica < -50:  #jesli napiecie jest o wiele za duze
+            nowe_powietrze = powietrze_teraz - 10  #robimy wielki skok w dol o 10 procent
+        else:  #jesli jestesmy powyzej celu ale blisko
+            nowe_powietrze = powietrze_teraz - 1  #robimy maly krok w dol o 1 procent
+
+        if nowe_powietrze > 100: #sprawdzamy czy nie przekraczamy limitu gornego
+            nowe_powietrze = 100
+        if nowe_powietrze < 0: #sprawdzamy czy nie spadamy ponizej zera
+            nowe_powietrze = 0
+
+        self.okno_wiz.piec.doplyw_powietrza = nowe_powietrze  # ustawiamy nowa wartosc w symulacji
+        self.suwak_powietrza.setValue(int(nowe_powietrze))  # przesuwamy suwak na ekranie
+        self.label_powietrze.setText(f"Doplyw: {int(nowe_powietrze)}%")  # aktualizujemy tekst etykiety
+
+    def aktualizuj_etykiete_v(self, wartosc):
+        self.v_zadane = wartosc
+        self.label_v_zadane.setText(f"Napięcie zadane: {wartosc} V")
+        self.calka = 0  #resetujemy pamiec regulatora przy zmianie celu
+        self.poprzedni_blad = 0
+
+    def aktualizuj_wykres(self):
+        v_teraz = self.okno_wiz.pradnica.generowany_prad #pobieramy aktualne napiecie z pradnicy
+        #usuwamy najstarsza wartosc z poczatku kazdej listy
+        self.y_zadane_h.pop(0)
+        self.y_gora_h.pop(0)
+        self.y_dol_h.pop(0)
+        self.y_v_aktualne_h.pop(0)
+        # dodajemy nowa wartosc na koniec kazdej listy
+        self.y_zadane_h.append(self.v_zadane)
+        self.y_gora_h.append(self.v_zadane + 5)
+        self.y_dol_h.append(self.v_zadane - 5)
+        self.y_v_aktualne_h.append(v_teraz)
+        # wysylamy nowe dane do linii na wykresie
+        self.line_zadana.setData(self.x_h, self.y_zadane_h)
+        self.line_gora.setData(self.x_h, self.y_gora_h)
+        self.line_dol.setData(self.x_h, self.y_dol_h)
+        self.line_aktualne.setData(self.x_h, self.y_v_aktualne_h)
 
 app = QApplication(sys.argv)
 okno_wiz = OknoZRysunkami()
